@@ -26,6 +26,7 @@ Verification, RateLimit, StripeEvent, ContactMessage (independientes)
 | **Client** | name, taxId, email, phone, address | índice (userId, name) |
 | **Quote** | number, title, status, issueDate, validUntil, vatRate, irpfRate, notes, client* (copia), subtotalCents, vatCents, irpfCents, totalCents, publicToken, sentAt, viewedAt, respondedAt | único (userId, number); publicToken único; índice (userId, createdAt), (userId, status) |
 | **QuoteItem** | position, description, quantity, unit, unitPriceCents, totalCents | índice quoteId; borrado en cascada |
+| **UsageCounter** | period ("YYYY-MM"), quotesCreated | único (userId, period). Solo sube: borrar no devuelve cupo; se incrementa en la transacción de creación |
 | **AiUsage** | success, inputTokens, outputTokens, model | índice (userId, createdAt) — base del límite mensual y control de coste |
 | **AuditLog** | action, entity, entityId, metadata | índice (userId, createdAt) |
 | **AnalyticsEvent** | name, props | índice (name, createdAt) |
