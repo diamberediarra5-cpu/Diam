@@ -6,7 +6,6 @@ import { generateItemsAction, saveQuoteAction, trackEventAction } from "@/action
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, Field, Input, Select, Textarea } from "@/components/ui/form";
-import { cn } from "@/lib/cn";
 import { eurosToCents, formatCents } from "@/lib/money";
 import { computeTotals } from "@/lib/quote-math";
 import { fieldErrors } from "@/validation/common";
@@ -96,6 +95,14 @@ export function QuoteEditor({
   useEffect(() => {
     if (!quoteId) void trackEventAction("main_action_started");
   }, [quoteId]);
+
+  // Al corregir cualquier campo, los errores anteriores dejan de ser válidos.
+  const editVersion = useRef(0);
+  useEffect(() => {
+    if (editVersion.current++ === 0) return;
+    setErrors({});
+    setFormError("");
+  }, [client, clientId, title, items, validUntil, notes]);
 
   const totals = useMemo(() => {
     const lines = items.map((i) => {
@@ -334,7 +341,7 @@ export function QuoteEditor({
                   aria-invalid={!!itemError(row.key, "description")}
                 />
                 {itemError(row.key, "description") && <p className="mt-1 text-sm text-red-600">{itemError(row.key, "description")}</p>}
-                <div className="mt-2 grid grid-cols-[1fr_1fr_1.3fr] gap-2 sm:grid-cols-[100px_110px_140px_1fr]">
+                <div className="mt-2 grid grid-cols-[1fr_1fr_1.3fr] gap-2 sm:grid-cols-[100px_130px_150px_1fr]">
                   <div>
                     <label className="text-xs text-muted" htmlFor={`q-${row.key}`}>
                       Cantidad
@@ -423,16 +430,19 @@ export function QuoteEditor({
       <div className="no-print fixed inset-x-0 bottom-[60px] z-20 border-t border-line bg-white/95 backdrop-blur lg:bottom-0 lg:left-60">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="min-w-0 text-sm">
-            <p className="text-xs text-muted">
+            <p className="hidden text-xs text-muted sm:block">
               Base {formatCents(totals.subtotalCents)} · IVA {formatCents(totals.vatCents)}
               {totals.irpfCents > 0 && ` · IRPF −${formatCents(totals.irpfCents)}`}
             </p>
-            <p className="text-lg font-bold tabular-nums">Total {formatCents(totals.totalCents)}</p>
+            <p className="text-xs text-muted sm:hidden">IVA {totals.irpfCents > 0 ? "e IRPF " : ""}incluidos</p>
+            <p className="whitespace-nowrap text-lg font-bold tabular-nums">Total {formatCents(totals.totalCents)}</p>
           </div>
           <div className="flex shrink-0 gap-2">
-            <ButtonLink href={quoteId ? `/panel/presupuestos/${quoteId}` : "/panel/presupuestos"} variant="ghost" className={cn("hidden sm:inline-flex")}>
-              Cancelar
-            </ButtonLink>
+            <span className="hidden sm:block">
+              <ButtonLink href={quoteId ? `/panel/presupuestos/${quoteId}` : "/panel/presupuestos"} variant="ghost">
+                Cancelar
+              </ButtonLink>
+            </span>
             <Button type="button" onClick={save} loading={saving} size="lg">
               {quoteId ? "Guardar cambios" : "Guardar presupuesto"}
             </Button>

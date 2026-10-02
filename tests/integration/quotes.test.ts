@@ -145,6 +145,30 @@ describe("presupuestos", () => {
       await updateQuote(u.id, first.id, sampleQuote({ title: "Editado" }));
     });
 
+    it("borrar presupuestos no devuelve cupo", async () => {
+      const u = await createUser();
+      for (let i = 0; i < 5; i++) {
+        const q = await createQuote(u.id, sampleQuote());
+        await deleteQuote(u.id, q.id);
+      }
+      await expectAppError(createQuote(u.id, sampleQuote()), "LIMIT_REACHED");
+    });
+
+    it("un intento rechazado por límite no consume cupo extra", async () => {
+      const u = await createUser();
+      for (let i = 0; i < 5; i++) await createQuote(u.id, sampleQuote());
+      await expectAppError(createQuote(u.id, sampleQuote()), "LIMIT_REACHED");
+      const counter = await db.usageCounter.findFirstOrThrow({ where: { userId: u.id } });
+      expect(counter.quotesCreated).toBe(5);
+    });
+
+    it("concurrencia: no se puede superar el límite con peticiones simultáneas", async () => {
+      const u = await createUser();
+      const results = await Promise.allSettled(Array.from({ length: 8 }, () => createQuote(u.id, sampleQuote())));
+      expect(results.filter((r) => r.status === "fulfilled").length).toBeLessThanOrEqual(5);
+      expect(await db.quote.count({ where: { userId: u.id } })).toBeLessThanOrEqual(5);
+    });
+
     it("Pro activo: sin límite", async () => {
       const u = await createUser({ plan: "PRO" });
       for (let i = 0; i < 7; i++) await createQuote(u.id, sampleQuote());

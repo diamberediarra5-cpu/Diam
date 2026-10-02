@@ -28,6 +28,7 @@ model User {
   clients         Client[]
   quotes          Quote[]
   aiUsages        AiUsage[]
+  usageCounters   UsageCounter[]
   auditLogs       AuditLog[]
   analyticsEvents AnalyticsEvent[]
 
@@ -229,6 +230,18 @@ model AiUsage {
 
   @@index([userId, createdAt])
   @@map("ai_usage")
+}
+
+// Presupuestos creados por mes. Solo sube (borrar un presupuesto no devuelve cupo).
+model UsageCounter {
+  id            String @id @default(cuid())
+  userId        String
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period        String // "YYYY-MM" (UTC)
+  quotesCreated Int    @default(0)
+
+  @@unique([userId, period])
+  @@map("usage_counter")
 }
 
 model AuditLog {

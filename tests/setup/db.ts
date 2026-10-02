@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 export async function resetDb() {
   await db.$executeRawUnsafe(`
     TRUNCATE TABLE "quote_item", "quote", "client", "business_profile", "subscription", "ai_usage",
-      "audit_log", "analytics_event", "stripe_event", "contact_message", "rate_limit",
+      "audit_log", "usage_counter", "analytics_event", "stripe_event", "contact_message", "rate_limit",
       "session", "account", "verification", "user" RESTART IDENTITY CASCADE`);
 }
 

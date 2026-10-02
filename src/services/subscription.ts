@@ -4,7 +4,11 @@ import { startOfMonthUtc } from "@/lib/dates";
 import { AppError } from "@/lib/errors";
 import { ACTIVE_STATUSES, PLANS, type PlanConfig } from "@/lib/plans";
 
-type DbLike = Pick<typeof db, "subscription" | "quote" | "aiUsage">;
+type DbLike = Pick<typeof db, "subscription" | "usageCounter" | "aiUsage">;
+
+export function currentPeriod(now = new Date()) {
+  return now.toISOString().slice(0, 7);
+}
 
 /** Plan efectivo: solo es Pro si Stripe dice que la suscripción está activa. */
 export async function getPlan(userId: string, client: DbLike = db): Promise<PlanConfig> {
@@ -15,11 +19,11 @@ export async function getPlan(userId: string, client: DbLike = db): Promise<Plan
 
 export async function getUsage(userId: string, client: DbLike = db) {
   const since = startOfMonthUtc();
-  const [quotes, ai] = await Promise.all([
-    client.quote.count({ where: { userId, createdAt: { gte: since } } }),
+  const [counter, ai] = await Promise.all([
+    client.usageCounter.findUnique({ where: { userId_period: { userId, period: currentPeriod() } } }),
     client.aiUsage.count({ where: { userId, success: true, createdAt: { gte: since } } }),
   ]);
-  return { quotes, ai };
+  return { quotes: counter?.quotesCreated ?? 0, ai };
 }
 
 export async function getPlanAndUsage(userId: string) {
@@ -31,11 +35,19 @@ export async function getPlanAndUsage(userId: string) {
   return { plan, usage, subscription };
 }
 
-export async function assertCanCreateQuote(userId: string, client: DbLike = db) {
+/**
+ * Reserva un presupuesto del cupo mensual (incremento atómico) y falla si se supera el límite.
+ * Debe llamarse dentro de la transacción que crea el presupuesto: si algo falla, se deshace.
+ */
+export async function consumeQuoteQuota(userId: string, client: DbLike = db) {
   const plan = await getPlan(userId, client);
-  if (plan.quotesPerMonth === null) return;
-  const { quotes } = await getUsage(userId, client);
-  if (quotes >= plan.quotesPerMonth) {
+  const period = currentPeriod();
+  const counter = await client.usageCounter.upsert({
+    where: { userId_period: { userId, period } },
+    create: { userId, period, quotesCreated: 1 },
+    update: { quotesCreated: { increment: 1 } },
+  });
+  if (plan.quotesPerMonth !== null && counter.quotesCreated > plan.quotesPerMonth) {
     throw new AppError(
       `Has llegado al límite de ${plan.quotesPerMonth} presupuestos este mes del plan Gratis. Pasa a Pro para crear presupuestos ilimitados.`,
       "LIMIT_REACHED",

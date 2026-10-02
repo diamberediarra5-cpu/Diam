@@ -9,7 +9,7 @@ import { computeTotals } from "@/lib/quote-math";
 import { quoteSchema, type QuoteData, type QuoteInput } from "@/validation/quote";
 import { track } from "./analytics";
 import { audit } from "./audit";
-import { assertCanCreateQuote, getPlan } from "./subscription";
+import { consumeQuoteQuota, getPlan } from "./subscription";
 
 const NOT_FOUND = new AppError("No hemos encontrado ese presupuesto.", "NOT_FOUND");
 
@@ -88,7 +88,7 @@ export async function createQuote(userId: string, input: QuoteInput) {
   const data = quoteSchema.parse(input);
   const quote = await db.$transaction(async (tx) => {
     await requireProfile(tx, userId);
-    await assertCanCreateQuote(userId, tx);
+    await consumeQuoteQuota(userId, tx);
     const clientId = await resolveClientId(tx, userId, data);
     const number = await nextNumber(tx, userId);
     const { fields, items } = buildQuoteFields(data);
@@ -126,7 +126,7 @@ export async function duplicateQuote(userId: string, id: string) {
   return db.$transaction(async (tx) => {
     const source = await tx.quote.findFirst({ where: { id, userId }, include: { items: true } });
     if (!source) throw NOT_FOUND;
-    await assertCanCreateQuote(userId, tx);
+    await consumeQuoteQuota(userId, tx);
     const number = await nextNumber(tx, userId);
     const { id: _id, createdAt: _c, updatedAt: _u, items, ...rest } = source;
     return tx.quote.create({
