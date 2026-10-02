@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireUser } from "@/lib/session";
+import { getSession, requireUser } from "@/lib/session";
 import { track } from "@/services/analytics";
 import { generateQuoteItems } from "@/services/ai/quote-generator";
 import {
@@ -10,6 +10,7 @@ import {
   deleteQuote,
   duplicateQuote,
   markShared,
+  markViewed,
   respondToQuote,
   setQuoteStatus,
   updateQuote,
@@ -92,4 +93,12 @@ export async function respondToQuoteAction(token: string, decision: "ACCEPTED" |
     revalidatePath(`/p/${t}`);
     return undefined;
   });
+}
+
+/** Pública: marca el presupuesto como visto (no cuenta si lo abre el propio autónomo). */
+export async function markViewedAction(token: string) {
+  const t = z.string().min(20).max(64).safeParse(token);
+  if (!t.success) return;
+  const session = await getSession();
+  await markViewed(t.data, session?.user.id);
 }
