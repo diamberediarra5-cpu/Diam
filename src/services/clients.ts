@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { clientSchema, type ClientInput } from "@/validation/client";
+import { nullifyOptional } from "@/validation/common";
 
 const NOT_FOUND = new AppError("No hemos encontrado ese cliente.", "NOT_FOUND");
 
@@ -32,13 +33,13 @@ export async function getClient(userId: string, id: string) {
   return client;
 }
 
-export function createClient(userId: string, input: ClientInput) {
-  const data = clientSchema.parse(input);
+export async function createClient(userId: string, input: ClientInput) {
+  const data = nullifyOptional(clientSchema.parse(input), Object.keys(clientSchema.shape));
   return db.client.create({ data: { ...data, userId } });
 }
 
 export async function updateClient(userId: string, id: string, input: ClientInput) {
-  const data = clientSchema.parse(input);
+  const data = nullifyOptional(clientSchema.parse(input), Object.keys(clientSchema.shape));
   // updateMany con userId en el where: imposible modificar un cliente ajeno.
   const { count } = await db.client.updateMany({ where: { id, userId }, data });
   if (count === 0) throw NOT_FOUND;

@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { nullifyOptional } from "@/validation/common";
 import { businessProfileSchema, type BusinessProfileInput } from "@/validation/profile";
 import { track } from "./analytics";
 
@@ -8,7 +9,7 @@ export function getProfile(userId: string) {
 }
 
 export async function saveProfile(userId: string, input: BusinessProfileInput) {
-  const data = businessProfileSchema.parse(input);
+  const data = nullifyOptional(businessProfileSchema.parse(input), Object.keys(businessProfileSchema.shape));
   const existing = await getProfile(userId);
   const profile = await db.businessProfile.upsert({
     where: { userId },

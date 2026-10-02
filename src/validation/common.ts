@@ -33,3 +33,12 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
   }
   return out;
 }
+
+/** Convierte undefined → null para que al vaciar un campo opcional se borre en BD (Prisma ignora undefined). */
+export function nullifyOptional<T extends Record<string, unknown>>(
+  data: T,
+  keys: readonly string[],
+): { [K in keyof T]: undefined extends T[K] ? Exclude<T[K], undefined> | null : T[K] } {
+  // Recorremos las claves del esquema: Zod omite las claves opcionales ausentes.
+  return Object.fromEntries(keys.map((k) => [k, data[k] === undefined ? null : data[k]])) as never;
+}
