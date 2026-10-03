@@ -17,7 +17,7 @@ jobs:
           POSTGRES_DB: presupuestalo_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U app" --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U app -d presupuestalo_test" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgresql://app:app@localhost:5432/presupuestalo_test
       TEST_DATABASE_URL: postgresql://app:app@localhost:5432/presupuestalo_test
